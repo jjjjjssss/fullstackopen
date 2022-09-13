@@ -6,6 +6,8 @@ const App = () => {
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [search, setSearch] = useState('')
+  const [notifMessage, setNotifMessage] = useState(null)
+  const [notifColor, setNotifColor] = useState('green')
 
   useEffect(() => {
     personServices
@@ -16,7 +18,7 @@ const App = () => {
   }, [])
 
   const addPerson = (event) => {
-    event.preventDefault();
+    event.preventDefault()
     const existingPerson = persons.find(person => person.name === newName)
     if (existingPerson) {
       if(window.confirm(`${existingPerson.name} is already added to phonebook, replace the old number with a new one?`)) {
@@ -26,6 +28,10 @@ const App = () => {
           .then(setPersons(persons.map(p => 
             p.id !== existingPerson.id ? p : replacingPerson
           )))
+          .catch(error => {
+            alreadyDeletedError(existingPerson)
+          })
+        setNotifMessage(`${existingPerson.name}'s number has been changed`)
       }
     } else {
       const newPerson = { 
@@ -37,10 +43,13 @@ const App = () => {
         .create(newPerson)
         .then(returnedPerson => {
           setPersons(persons.concat(returnedPerson))
+          setNotifMessage(`${newName} has been added`)
         })
     }
     setNewName('')
     setNewNumber('')
+    setNotifColor('green')
+    setTimeout(() => setNotifMessage(null), 4000)
   }
 
   const handleNameChange = (event) => {
@@ -59,7 +68,17 @@ const App = () => {
         .then(() => {
           setPersons(persons.filter(p => p.id !== person.id))
         })
+        .catch(error => {
+          alreadyDeletedError(person)
+        })
     }
+  }
+
+  const alreadyDeletedError = (person) => {
+    setNotifMessage(`Information of ${person.name} has already been removed from server`)
+    setNotifColor('red')
+    setPersons(persons.filter(p => p.id !== person.id))
+    setTimeout(() => setNotifMessage(null), 4000)
   }
 
   const personsToShow = persons.filter((person) => (
@@ -69,6 +88,7 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={notifMessage} color={notifColor}/>
       <Search value={search} onChange={handleSearchChange}/>
 
       <h2>Add a new</h2>
@@ -120,6 +140,35 @@ const Persons = (props) => {
       )}
     </ul>
   )
+}
+
+const Notification = ({message, color}) => {
+  if (message === null) {
+    return
+  }
+  let style = {
+    alignSelf: 'stretch',
+    borderRadius: 3,
+    border: '1px solid #34a34d',
+    padding: 6,
+    marginBottom: 12
+  }
+  if (color === 'green') {
+    style = {
+      ...style,
+      backgroundColor: '#adf7bd',
+      color: '#156b28',
+      border: '1px solid #34a34d'
+    }
+  } else if (color === 'red') {
+    style = {
+      ...style,
+      backgroundColor: '#ffb6ab',
+      color: '#a33626',
+      border: '1px solid #cf5d4c'
+    }
+  }
+  return <div style={style}>{message}</div>
 }
 
 export default App
