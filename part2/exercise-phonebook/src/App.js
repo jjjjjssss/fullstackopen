@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import personServices from './services/personServices'
 
 const App = () => {
   const [persons, setPersons] = useState([]) 
@@ -8,24 +8,36 @@ const App = () => {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        setPersons(response.data)
+    personServices
+      .getAll()
+      .then(initialPersons => {
+        setPersons(initialPersons)
       })
   }, [])
 
   const addPerson = (event) => {
     event.preventDefault();
-    if (persons.find(person => person.name === newName)) {
-      alert(`${newName} is already added to phonebook`)
+    const existingPerson = persons.find(person => person.name === newName)
+    if (existingPerson) {
+      if(window.confirm(`${existingPerson.name} is already added to phonebook, replace the old number with a new one?`)) {
+        const replacingPerson = {...existingPerson, number: newNumber}
+        personServices
+          .update(replacingPerson, existingPerson.id)
+          .then(setPersons(persons.map(p => 
+            p.id !== existingPerson.id ? p : replacingPerson
+          )))
+      }
     } else {
       const newPerson = { 
         name: newName,
         number: newNumber,
-        id: persons.length + 1
+        // id: persons.length + 1
       }
-      setPersons(persons.concat(newPerson))
+      personServices
+        .create(newPerson)
+        .then(returnedPerson => {
+          setPersons(persons.concat(returnedPerson))
+        })
     }
     setNewName('')
     setNewNumber('')
@@ -39,6 +51,15 @@ const App = () => {
   }
   const handleSearchChange = (event) => {
     setSearch(event.target.value)
+  }
+  const handleDelete = (person) => {
+    if (window.confirm(`Delete ${person.name}?`)) {
+      personServices
+        .remove(person.id)
+        .then(() => {
+          setPersons(persons.filter(p => p.id !== person.id))
+        })
+    }
   }
 
   const personsToShow = persons.filter((person) => (
@@ -60,7 +81,7 @@ const App = () => {
       />
 
       <h2>Numbers</h2>
-      <Persons persons={personsToShow}/>
+      <Persons persons={personsToShow} handleDelete={handleDelete}/>
     </div>
   )
 }
@@ -92,7 +113,10 @@ const Persons = (props) => {
   return (
     <ul style={{listStyleType:"none",paddingLeft:0}}>
       {props.persons.map((person) => 
-        <li key={person.id}>{person.name} {person.number}</li>
+        <li key={person.id}>
+          {person.name} {person.number}
+          <button onClick={() => props.handleDelete(person)}>Delete</button>
+        </li>
       )}
     </ul>
   )
