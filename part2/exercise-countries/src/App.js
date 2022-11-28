@@ -14,6 +14,8 @@ const App = () => {
 			})
 	}, [])
 
+	console.log(all)
+
 	const handleSearchChange = event => {
 		setSearch(event.target.value)
 	}
